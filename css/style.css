@@ -1,0 +1,744 @@
+/* ==========================================================
+   JUMP - TI  |  Cyberpunk pixel art
+   Paleta: preto, azul e roxo
+   ========================================================== */
+:root {
+    --preto: #05030f;
+    --preto-2: #0b0720;
+    --painel: #0d0a28;
+    --azul: #00b4ff;
+    --azul-neon: #00e5ff;
+    --azul-escuro: #0a3cff;
+    --azul-fundo: #031a66;
+    --roxo: #9d4dff;
+    --roxo-neon: #c04dff;
+    --roxo-escuro: #4b1d9c;
+    --texto: #e6e9ff;
+    --texto-suave: #8f8fd6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--preto);
+    font-family: 'Press Start 2P', monospace;
+    color: var(--texto);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    user-select: none;
+}
+
+/* Pixel art: nunca suavizar as imagens */
+img,
+.game-board {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.game-container {
+    width: 100%;
+    max-width: 900px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- HUD ---------- */
+.hud-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    pointer-events: none;
+    width: 100%;
+    background: linear-gradient(180deg, var(--preto-2) 0%, var(--painel) 100%);
+    border-bottom: 4px solid var(--azul);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow:
+        0 4px 0 var(--roxo-escuro),
+        0 0 22px rgba(0, 180, 255, 0.55);
+}
+
+/* detalhes de "parafusos" pixelados nos cantos */
+.hud-bar::before,
+.hud-bar::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--roxo);
+    box-shadow: 0 0 6px var(--roxo);
+    top: 6px;
+}
+.hud-bar::before { left: 8px; }
+.hud-bar::after { right: 8px; }
+
+.hud-stats {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.player-info, .score-info, .coins-info, .level-info, .lives-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: var(--roxo);
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(157, 77, 255, 0.8);
+}
+
+.value {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--azul-neon);
+    text-shadow: 2px 2px 0 var(--azul-fundo), 0 0 10px rgba(0, 229, 255, 0.7);
+}
+
+/* ---------- Tabuleiro ---------- */
+.game-board {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    border: 4px solid var(--azul);
+    margin: 0 auto;
+    overflow: hidden;
+    background: var(--preto) url('../assets/img_ana/fundo_ana.png') no-repeat center center;
+    background-size: cover;
+    box-shadow:
+        inset 0 0 0 4px var(--preto),
+        inset 0 0 0 8px var(--roxo-escuro),
+        inset 0 -40px 60px -20px rgba(157, 77, 255, 0.45),
+        0 0 30px rgba(0, 180, 255, 0.5);
+    cursor: pointer;
+}
+
+/* Scanlines estilo monitor CRT por cima do cenário */
+.game-board::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0) 0px,
+        rgba(0, 0, 0, 0) 2px,
+        rgba(5, 3, 15, 0.12) 3px,
+        rgba(5, 3, 15, 0.12) 4px
+    );
+    mix-blend-mode: multiply;
+}
+
+/* ---------- Elementos do jogo ---------- */
+.obstaculo {
+    position: absolute;
+    bottom: -20px;
+    width: 150px;
+    height: auto;
+    right: -100px;
+    z-index: 8;
+    
+}
+
+.personagem {
+    width: 150px;
+    position: absolute;
+    bottom: 0;
+    left: 20px;
+    z-index: 10;
+}
+
+.clouds {
+    position: absolute;
+    width: 550px;
+    max-width: 75vw;
+    height: auto;
+    top: 30px;
+    right: -550px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.jump-tip {
+    position: absolute;
+    bottom: 45px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--azul-neon);
+    background: rgba(5, 3, 15, 0.75);
+    border: 2px solid var(--roxo);
+    padding: 8px 12px;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.9);
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 25;
+    animation: piscar-dica 1.2s steps(2, end) infinite;
+}
+
+@keyframes piscar-dica {
+    0%, 100% { border-color: var(--roxo); }
+    50% { border-color: var(--azul); }
+}
+
+/* ---------- Animações do jogo ---------- */
+.game-board.running .obstaculo {
+    animation: obstaculo-animation 1.6s infinite linear;
+}
+
+.game-board.running .clouds {
+    animation: clouds-animation 18s infinite linear;
+}
+
+.jump {
+    animation: jump-animation 800ms ease-in-out;
+}
+
+@keyframes jump-animation {
+    0% { bottom: 0; }
+    50% { bottom: 250px; }
+    100% { bottom: 0; }
+}
+
+@keyframes obstaculo-animation {
+    from { right: -80px; }
+    to { right: 100%; }
+}
+
+@keyframes clouds-animation {
+    from { right: -550px; }
+    to { right: 100%; }
+}
+
+/* Personagem derrotado (game over) */
+.personagem.derrotado {
+    filter: grayscale(1) brightness(0.6) drop-shadow(0 0 8px var(--roxo-neon));
+    transform: rotate(-12deg);
+}
+
+/* ---------- Modais ---------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background:
+        linear-gradient(rgba(5, 3, 15, 0.88), rgba(11, 7, 32, 0.92)),
+        var(--menu-bg, none) no-repeat center center;
+    background-size: cover;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* grade neon sutil no fundo dos menus */
+.modal-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(0, 180, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(157, 77, 255, 0.07) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-overlay.active .modal-card {
+    animation: fadeInCard 0.3s steps(6, end);
+}
+
+.modal-card {
+    position: relative;
+    background: var(--painel);
+    border: 4px solid var(--azul);
+    border-radius: 0;
+    padding: 30px;
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+    /* moldura dupla em "degraus" + brilho neon */
+    box-shadow:
+        0 0 0 4px var(--preto),
+        0 0 0 8px var(--roxo),
+        0 0 30px rgba(157, 77, 255, 0.6),
+        inset 0 0 25px rgba(0, 180, 255, 0.15);
+}
+
+.modal-header {
+    margin-bottom: 25px;
+}
+
+.game-title {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--azul-neon);
+    font-size: 22px;
+    line-height: 1.5;
+    text-shadow:
+        3px 3px 0 var(--roxo),
+        6px 6px 0 var(--roxo-escuro),
+        0 0 18px rgba(0, 229, 255, 0.8);
+    margin-bottom: 12px;
+    animation: glitch 4s steps(1, end) infinite;
+}
+
+@keyframes glitch {
+    0%, 92%, 100% { transform: translate(0, 0); }
+    93% { transform: translate(-3px, 0); }
+    95% { transform: translate(3px, 0); }
+    97% { transform: translate(-2px, 0); }
+}
+
+.game-subtitle {
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--texto-suave);
+}
+
+/* ---------- Formulário ---------- */
+.start-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.input-group label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: var(--roxo);
+    text-shadow: 0 0 8px rgba(157, 77, 255, 0.7);
+}
+
+.input-group input {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 0;
+    border: 3px solid var(--roxo-escuro);
+    background: var(--preto);
+    color: var(--azul-neon);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    font-weight: 400;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    caret-color: var(--roxo-neon);
+}
+
+.input-group input::placeholder {
+    color: #3b3b7a;
+}
+
+.input-group input:focus {
+    border-color: var(--azul);
+    box-shadow: 0 0 14px rgba(0, 180, 255, 0.6), inset 0 0 8px rgba(0, 180, 255, 0.2);
+}
+
+/* ---------- Botões ---------- */
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    padding: 14px 20px;
+    border: 3px solid var(--preto);
+    border-radius: 0;
+    cursor: pointer;
+    transition: transform 0.1s steps(2, end), box-shadow 0.15s;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.btn-primary {
+    background: var(--azul-escuro);
+    color: #ffffff;
+    box-shadow: 0 5px 0 var(--azul-fundo), 0 0 0 3px var(--azul);
+    text-shadow: 2px 2px 0 var(--azul-fundo);
+}
+
+.btn-primary:hover {
+    background: #2a5bff;
+    box-shadow: 0 5px 0 var(--azul-fundo), 0 0 0 3px var(--azul-neon), 0 0 20px rgba(0, 229, 255, 0.7);
+}
+
+.btn-primary:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 var(--azul-fundo), 0 0 0 3px var(--azul);
+}
+
+.btn-secondary {
+    background: var(--roxo-escuro);
+    color: var(--texto);
+    box-shadow: 0 5px 0 #25104f, 0 0 0 3px var(--roxo);
+    text-shadow: 2px 2px 0 #25104f;
+}
+
+.btn-secondary:hover {
+    background: #6a2fd6;
+    color: #ffffff;
+    box-shadow: 0 5px 0 #25104f, 0 0 0 3px var(--roxo-neon), 0 0 20px rgba(192, 77, 255, 0.7);
+}
+
+.btn-secondary:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #25104f, 0 0 0 3px var(--roxo);
+}
+
+/* ---------- Status do servidor ---------- */
+.server-status {
+    margin-top: 24px;
+    font-size: 10px;
+    color: var(--texto-suave);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--roxo);
+    display: inline-block;
+}
+
+.status-dot.online {
+    background: var(--azul-neon);
+    box-shadow: 0 0 8px var(--azul-neon);
+    animation: pulsar 1.4s steps(2, end) infinite;
+}
+
+.status-dot.offline {
+    background: var(--roxo-neon);
+    box-shadow: 0 0 8px var(--roxo-neon);
+}
+
+@keyframes pulsar {
+    50% { opacity: 0.35; }
+}
+
+/* ---------- Game Over e Ranking ---------- */
+.gameover-card {
+    max-width: 540px;
+}
+
+.gameover-title {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--roxo-neon);
+    font-size: 26px;
+    text-shadow:
+        3px 3px 0 var(--azul-escuro),
+        0 0 20px rgba(192, 77, 255, 0.9);
+    margin-bottom: 10px;
+    animation: glitch 2.5s steps(1, end) infinite;
+}
+
+.final-score-box {
+    background: var(--preto);
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 3px solid var(--roxo-escuro);
+    box-shadow: inset 0 0 14px rgba(157, 77, 255, 0.3);
+}
+
+.final-score-label {
+    font-size: 11px;
+    color: var(--texto-suave);
+    margin-bottom: 8px;
+}
+
+.final-score-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 24px;
+    color: var(--azul-neon);
+    text-shadow: 2px 2px 0 var(--roxo-escuro), 0 0 14px rgba(0, 229, 255, 0.8);
+}
+
+.ranking-container {
+    margin-bottom: 20px;
+}
+
+.ranking-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    color: var(--roxo);
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 8px rgba(157, 77, 255, 0.7);
+}
+
+.table-wrapper {
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--preto);
+    border: 3px solid var(--roxo-escuro);
+}
+
+.table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+.table-wrapper::-webkit-scrollbar-track {
+    background: var(--preto);
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--roxo);
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+    color: var(--texto);
+}
+
+.ranking-table th {
+    background: var(--roxo-escuro);
+    color: var(--azul-neon);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 10px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.ranking-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid #1a1450;
+}
+
+.ranking-table tr:nth-child(even) {
+    background: rgba(0, 180, 255, 0.05);
+}
+
+.ranking-table tr.highlight-current {
+    background: rgba(157, 77, 255, 0.3) !important;
+    font-weight: 700;
+    color: var(--azul-neon);
+    box-shadow: inset 4px 0 0 var(--azul-neon);
+}
+
+.ranking-pos {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    width: 40px;
+}
+
+.loading-cell {
+    text-align: center;
+    padding: 20px !important;
+    color: var(--texto-suave);
+}
+
+.save-status {
+    margin-top: 10px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--azul-neon);
+}
+
+@keyframes fadeInCard {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ---------- Escolha de personagem ---------- */
+.btn-character {
+    width: 100%;
+    background: var(--roxo-escuro);
+    color: #ffffff;
+    box-shadow: 0 5px 0 #25104f, 0 0 0 3px var(--roxo);
+    text-shadow: 2px 2px 0 #25104f;
+}
+
+.btn-character:hover:not(:disabled) {
+    background: #6a2fd6;
+    box-shadow: 0 5px 0 #25104f, 0 0 0 3px var(--roxo-neon), 0 0 20px rgba(192, 77, 255, 0.7);
+}
+
+.btn-character:disabled {
+    background: #14102e;
+    color: #3b3b7a;
+    box-shadow: 0 5px 0 #0a0820, 0 0 0 3px #1f1a4d;
+    text-shadow: none;
+    cursor: not-allowed;
+}
+
+.character-selected {
+    font-size: 10px;
+    color: var(--azul-neon);
+    min-height: 14px;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+.character-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.character-card {
+    background: var(--preto);
+    border: 3px solid var(--roxo-escuro);
+    border-radius: 0;
+    padding: 14px 8px;
+    cursor: pointer;
+    transition: transform 0.1s steps(2, end), border-color 0.15s, box-shadow 0.15s;
+    color: var(--texto);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+}
+
+.character-card img {
+    display: block;
+    height: 90px;
+    margin: 0 auto 10px;
+    object-fit: contain;
+}
+
+.character-card span {
+    display: block;
+    line-height: 1.4;
+}
+
+.character-card:hover {
+    border-color: var(--roxo-neon);
+    box-shadow: 0 0 14px rgba(192, 77, 255, 0.6);
+    transform: translateY(-3px);
+}
+
+.character-card.selected {
+    border-color: var(--azul-neon);
+    color: var(--azul-neon);
+    box-shadow: 0 0 0 3px var(--preto), 0 0 0 6px var(--azul), 0 0 18px rgba(0, 229, 255, 0.7);
+}
+
+/* ---------- Moeda e +5 ---------- */
+.moeda {
+    position: absolute;
+    bottom: 80px;
+    width: 40px;
+    right: -50px;
+    animation: moeda-animation 2s infinite linear;
+    transition: opacity 0.1s;
+    z-index: 1;
+}
+
+@keyframes moeda-animation {
+    from { right: -50px; }
+    to { right: 100%; }
+}
+
+#plus-five {
+    position: absolute;
+    bottom: 120px;
+    left: 80px;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--azul-neon);
+    text-shadow: 2px 2px 0 var(--roxo), 0 0 12px rgba(0, 229, 255, 0.9);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 30;
+}
+
+.animate-plus-five {
+    animation: floatUp 0.6s steps(8, end) forwards;
+}
+
+@keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+}
+
+/* ---------- Vidas ---------- */
+#lives-display {
+    display: inline-block;
+    min-width: 66px;
+    font-size: 14px;
+    letter-spacing: 2px;
+    filter: hue-rotate(230deg) saturate(1.6) drop-shadow(0 0 6px rgba(157, 77, 255, 0.9));
+}
+
+/* ---------- Responsividade ---------- */
+@media (max-width: 600px) {
+    .game-board {
+        height: 380px;
+    }
+    .personagem {
+        width: 100px;
+    }
+    .obstaculo {
+        width: 60px;
+    }
+    .hud-bar {
+        padding: 10px 14px;
+    }
+    .hud-stats {
+        gap: 10px;
+    }
+    .label {
+        font-size: 8px;
+    }
+    .value {
+        font-size: 10px;
+    }
+    .game-title {
+        font-size: 16px;
+    }
+    .gameover-title {
+        font-size: 18px;
+    }
+    .btn {
+        font-size: 10px;
+        padding: 12px 14px;
+    }
+}
