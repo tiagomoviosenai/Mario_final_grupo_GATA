@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const livesDisplay = document.getElementById('lives-display');
 
     const gameBoard = document.getElementById('game-board');
-    const clouds = document.getElementById('clouds');
+    const lindo = document.getElementById('lindo');
     const hudPlayerName = document.getElementById('hud-player-name');
     const jumpTip = document.getElementById('jump-tip');
 
@@ -26,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRestart = document.getElementById('btn-restart');
     const btnChangePlayer = document.getElementById('btn-change-player');
 
+    // Sobre nós
+    const btnAbout = document.getElementById('btn-about');
+    const aboutModal = document.getElementById('about-modal');
+    const btnCloseAbout = document.getElementById('btn-close-about');
+
     // Escolha de personagem
     const btnChooseCharacter = document.getElementById('btn-choose-character');
     const characterSelected = document.getElementById('character-selected');
@@ -38,32 +43,35 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 'sg',
             nome: 'Abelha',
+            tamanho: 120,
             img: 'assets/img_sg/personagem_sg.gif',
             fundo: 'assets/img_sg/fundo_sg.png',
             fundoEscuro: 'assets/img_sg/fundo_s_sg.png',
-            nuvem: 'assets/img_sg/ceu_sg.webp',
-            nuvemEscura: 'assets/img_sg/ceu_s_sg.png',
+            
             obstaculo: 'assets/img_sg/obt_sg.png'
         },
         {
             id: 'tg',
             nome: 'Fazendeiro',
+            tamanho: 150,
             img: 'assets/img_tg/personagem_tg.gif',
             fundo: 'assets/img_tg/fundo_tg.jpg',
             fundoEscuro: 'assets/img_tg/fundo_s_tg.jpg',
-            nuvem: 'assets/img_tg/ceu_tg.png',
-            nuvemEscura: 'assets/img_tg/ceu_s_tg.png',
             obstaculo: 'assets/img_tg/obt_tg.png'
         },
         {
             id: 'gus',
-            nome: 'Link',
+            nome: 'Sonic',
+            tamanho: 255,
             img: 'assets/img_gus/personagem_gus.gif',
             fundo: 'assets/img_gus/fundo_gus.png',
             fundoEscuro: 'assets/img_gus/fundo_s_gus.png',
             obstaculo: 'assets/img_gus/obt_gus.png'
         }
     ];
+
+    // GIF que atravessa a tela da esquerda para a direita em todos os cenários
+    const LINDO_GIF = 'assets/lindo.gif';
 
     // Reinicia a animação de um GIF (o parâmetro novo força o navegador a recarregar)
     function gifFresco(src) {
@@ -72,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Pré-carrega cenários e obstáculos (os GIFs ficam de fora para não terminarem a animação antes da hora)
     ALL_CHARACTERS.forEach(c => {
-        [c.fundo, c.fundoEscuro, c.nuvem, c.nuvemEscura, c.obstaculo].filter(Boolean).forEach(src => {
+        [c.fundo, c.fundoEscuro, c.obstaculo].filter(Boolean).forEach(src => {
             const im = new Image();
             im.src = src;
         });
@@ -101,7 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let scoreLoop = null;
 
     // Velocidade e nível
-    let currentSpeed = 2.5;
+    // Quanto MENOR o número, mais RÁPIDO o jogo (tempo em segundos que o obstáculo leva para cruzar a tela)
+    const VELOCIDADE_INICIAL = 2.2;     // começa um pouco mais rápido que o original (2.5)
+    const REDUCAO_POR_NIVEL = 0.08;     // quanto acelera a cada nível (pequeno = aumento gradual)
+    const VELOCIDADE_MAXIMA = 0.9;      // limite (a mais rápida possível)
+
+    let currentSpeed = VELOCIDADE_INICIAL;
     let currentLevel = 1;
     let levelMessageTimeout = null;
 
@@ -170,8 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyCharacter() {
+        document.body.dataset.cenario = selectedCharacter.id; 
         if (fazendeiro) {
             fazendeiro.src = gifFresco(selectedCharacter.img);
+            fazendeiro.style.width = selectedCharacter.tamanho + 'px';
+
         }
         if (toco) {
             toco.src = selectedCharacter.obstaculo;
@@ -207,6 +223,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             characterGrid.appendChild(card);
+        });
+    }
+
+    // Abre e fecha a tela Sobre Nós (só funciona se o botão existir no index.php)
+    if (btnAbout && aboutModal) {
+        btnAbout.addEventListener('click', () => {
+            startModal.classList.remove('active');
+            aboutModal.classList.add('active');
+        });
+    }
+
+    if (btnCloseAbout && aboutModal) {
+        btnCloseAbout.addEventListener('click', () => {
+            aboutModal.classList.remove('active');
+            startModal.classList.add('active');
         });
     }
 
@@ -287,6 +318,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Coração de vida extra (aparece a cada 10 níveis)
+    function gerarCoracao() {
+        const alturaDoChao = 110;
+        const x = gameBoard.clientWidth;
+
+        const elem = document.createElement('div');
+        elem.className = 'coracao';
+        elem.textContent = '❤️';
+
+        Object.assign(elem.style, {
+            position: 'absolute',
+            bottom: `${alturaDoChao}px`,
+            left: `${x}px`,
+            width: '44px',
+            height: '44px',
+            fontSize: '40px',
+            lineHeight: '44px',
+            textAlign: 'center',
+            zIndex: '9',
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 8px #ff3b6b)'
+        });
+
+        gameBoard.appendChild(elem);
+
+        run.moedasLista.push({
+            tipo: 'coracao',
+            elem,
+            x,
+            y: gameBoard.clientHeight - alturaDoChao - 44,
+            largura: 44,
+            altura: 44,
+            coletada: false,
+            tColeta: 0
+        });
+    }
+
+    function coletarCoracao(m) {
+        m.coletada = true;
+        m.elem.style.display = 'none';
+
+        lives += 1;
+        atualizarVidas();
+        somVidaExtra();
+        mostrarMensagem('❤️ VIDA EXTRA! ❤️');
+    }
+
     function caixaMoeda(m) {
         return {
             x: m.x,
@@ -351,7 +429,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (m.coletada) {
                 m.tColeta += dt;
             } else if (colide(player, caixaMoeda(m))) {
-                coletarMoeda(m);
+                if (m.tipo === 'coracao') {
+                    coletarCoracao(m);
+                } else {
+                    coletarMoeda(m);
+                }
             }
 
             if (m.x < -50 || m.tColeta > 1) {
@@ -427,6 +509,12 @@ document.addEventListener('DOMContentLoaded', () => {
         tocarNota(1319, 0.08, 0.35);
     }
 
+    function somVidaExtra() {
+        [523, 659, 784, 1047].forEach((n, i) => {
+            tocarNota(n, i * 0.09, 0.2, 'square', 0.12);
+        });
+    }
+
     function somDanoSintetico() {
         tocarNota(500, 0, 0.35, 'sawtooth', 0.12, 90);
     }
@@ -467,6 +555,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const copia = audio.cloneNode();
         copia.volume = audio.volume;
         copia.play().catch(() => alternativo());
+    }
+
+    // ==========================================
+    // MÚSICA DE FUNDO
+    // ==========================================
+
+    const ARQUIVO_MUSICA = 'assets/musica.mp3';   // troque a extensão se o seu arquivo for outra (.wav, .ogg...)
+
+    const musica = new Audio(ARQUIVO_MUSICA);
+    musica.loop = true;
+    musica.volume = 0.3;                           // 0 (mudo) até 1 (máximo)
+    musica.preload = 'auto';
+
+    function tocarMusica() {
+        musica.currentTime = 0;
+        musica.play().catch(() => {});
+    }
+
+    function pararMusica() {
+        musica.pause();
+        musica.currentTime = 0;
     }
 
     function somPulo() {
@@ -538,21 +647,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const escuro = Math.floor(currentLevel / NIVEIS_POR_FUNDO) % 2 === 1;
         const src = escuro ? selectedCharacter.fundoEscuro : selectedCharacter.fundo;
         gameBoard.style.backgroundImage = `url('${src}')`;
-
-        // Troca também a imagem das nuvens quando o cenário fica escuro.
-        if (clouds) {
-            const nuvemSrc = escuro
-                ? (selectedCharacter.nuvemEscura || selectedCharacter.nuvem)
-                : selectedCharacter.nuvem;
-            if (nuvemSrc) {
-                if (!clouds.src.endsWith(nuvemSrc)) {
-                    clouds.src = nuvemSrc;
-                }
-                clouds.style.display = 'block';
-            } else {
-                clouds.style.display = 'none';
-            }
-        }
     }
 
     function atualizarNivel() {
@@ -560,21 +654,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (novoNivel <= currentLevel) return;
 
+        const nivelAnterior = currentLevel;
         currentLevel = novoNivel;
+
+        // A cada 10 níveis (10, 20, 30...) aparece um coração de vida extra
+        if (Math.floor(currentLevel / 10) > Math.floor(nivelAnterior / 10)) {
+            gerarCoracao();
+        }
 
         if (levelDisplay) {
             levelDisplay.textContent = currentLevel;
         }
 
-        const REDUCAO_POR_NIVEL = 0.2;
-        const VELOCIDADE_MAXIMA = 1.1;
-
         currentSpeed = Math.max(
             VELOCIDADE_MAXIMA,
-            2.5 - ((currentLevel - 1) * REDUCAO_POR_NIVEL)
+            VELOCIDADE_INICIAL - ((currentLevel - 1) * REDUCAO_POR_NIVEL)
         );
 
-        const taxa = 2.5 / currentSpeed;
+        const taxa = VELOCIDADE_INICIAL / currentSpeed;
         const anims = toco.getAnimations ? toco.getAnimations() : [];
 
         if (anims.length && anims[0].updatePlaybackRate) {
@@ -588,7 +685,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function mostrarMensagemNivel(nivel) {
-        levelMessage.textContent = `🎉 SUBIU DE NÍVEL! NÍVEL ${nivel} 🎉`;
+        mostrarMensagem(`🎉 SUBIU DE NÍVEL! NÍVEL ${nivel} 🎉`);
+    }
+
+    function mostrarMensagem(texto) {
+        levelMessage.textContent = texto;
         levelMessage.style.opacity = '1';
         levelMessage.style.transform = 'translate(-50%, -50%) scale(1)';
 
@@ -617,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startGame() {
         iniciarAudio();
+        tocarMusica();
 
         clearInterval(gameLoop);
         clearInterval(scoreLoop);
@@ -630,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
         score = 0;
         coins = 0;
         currentLevel = 1;
-        currentSpeed = 2.5;
+        currentSpeed = VELOCIDADE_INICIAL;
 
         esconderMensagemNivel();
 
@@ -660,7 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function resetElements() {
-        currentSpeed = 2.5;
+        currentSpeed = VELOCIDADE_INICIAL;
         currentLevel = 1;
 
         lives = VIDAS_INICIAIS;
@@ -675,6 +777,11 @@ document.addEventListener('DOMContentLoaded', () => {
         toco.style.left = '';
 
         limpaMoedas();
+
+        // Recarrega o lindo.gif para a animação recomeçar do zero
+        if (lindo) {
+            lindo.src = gifFresco(LINDO_GIF);
+        }
 
         fazendeiro.src = gifFresco(selectedCharacter.img);
         toco.src = selectedCharacter.obstaculo;
@@ -752,6 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function triggerGameOver(tocoPosition, fazendeiroPosition) {
         isPlaying = false;
+        pararMusica();
 
         clearInterval(gameLoop);
         clearInterval(scoreLoop);

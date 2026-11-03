@@ -62,9 +62,12 @@ try {
 
         
         <main class="game-board" id="game-board">
-            <img src="assets/img_ana/ceu_ana.png" class="clouds" id="clouds" alt="" aria-hidden="true">
+            <img src="assets/lindo.gif" class="lindo" id="lindo" alt="" aria-hidden="true">
             <img src="assets/img_ana/personagem_ana.gif" class="personagem" alt="Personagem">
+            
             <img src="assets/img_ana/obt_ana.png" class="obstaculo" alt="Obstáculo">
+            
+            
             
             <!-- Texto flutuante do +5 da moeda -->
             <div id="plus-five">+5</div>
@@ -102,6 +105,7 @@ try {
 
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary" id="btn-start">INICIAR JOGO</button>
+                  <a  class="game-title" href="site/index.html">SOBRE NÓS</a>
                 </div>
             </form>
 

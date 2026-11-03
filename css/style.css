@@ -168,13 +168,13 @@ img,
     z-index: 10;
 }
 
-.clouds {
+.lindo {
     position: absolute;
     width: 550px;
     max-width: 75vw;
     height: auto;
     top: 30px;
-    right: -550px;
+    left: -550px;
     z-index: 2;
     pointer-events: none;
 }
@@ -207,8 +207,8 @@ img,
     animation: obstaculo-animation 1.6s infinite linear;
 }
 
-.game-board.running .clouds {
-    animation: clouds-animation 18s infinite linear;
+.game-board.running .lindo {
+    animation: lindo-animation 18s infinite linear;
 }
 
 .jump {
@@ -226,9 +226,9 @@ img,
     to { right: 100%; }
 }
 
-@keyframes clouds-animation {
-    from { right: -550px; }
-    to { right: 100%; }
+@keyframes lindo-animation {
+    from { left: -550px; }
+    to { left: 100%; }
 }
 
 /* Personagem derrotado (game over) */
@@ -742,3 +742,43 @@ img,
         padding: 12px 14px;
     }
 }
+
+
+
+body[data-cenario="sg"] .game-board {
+    border-color: #ffb300;            /* borda do tabuleiro */
+}
+body[data-cenario="sg"] .obstaculo {
+    width: 150px;                     /* tamanho do obstáculo só aqui */
+}
+body[data-cenario="sg"] .lindo {
+    top: 60px;                        /* posição do lindo.gif só aqui */
+}
+
+/* ===== Cenário do Fazendeiro ===== */
+body[data-cenario="tg"] .game-board {
+    filter: saturate(1.2);
+    
+}
+
+/* ===== Cenário do Link ===== */
+body[data-cenario="gus"] .obstaculo {
+    width: 180px;
+}
+
+/* ===== Grama no Fazendeiro (tg) e no Link (gus) ===== */
+body[data-cenario="tg"] .game-board::before,
+body[data-cenario="gus"] .game-board::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 70px;                      /* altura da grama */
+    z-index: 1;                        /* atrás do personagem (10) e do obstáculo (8) */
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, #7ddc4a 0%, #4caf2a 35%, #2e7d1a 100%);
+    border-top: 4px solid #2e7d1a;     /* borda de cima da grama */
+}
+
