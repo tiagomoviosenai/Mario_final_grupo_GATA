@@ -152,7 +152,7 @@ img,
 /* ---------- Elementos do jogo ---------- */
 .obstaculo {
     position: absolute;
-    bottom: -20px;
+    bottom: calc(-20px + var(--chao, 0px));
     width: 150px;
     height: auto;
     right: -100px;
@@ -163,7 +163,7 @@ img,
 .personagem {
     width: 150px;
     position: absolute;
-    bottom: 0;
+    bottom: var(--chao, 0px);
     left: 20px;
     z-index: 10;
 }
@@ -216,9 +216,9 @@ img,
 }
 
 @keyframes jump-animation {
-    0% { bottom: 0; }
-    50% { bottom: 250px; }
-    100% { bottom: 0; }
+    0%   { bottom: var(--chao, 0px); }
+    50%  { bottom: calc(var(--chao, 0px) + 250px); }
+    100% { bottom: var(--chao, 0px); }
 }
 
 @keyframes obstaculo-animation {
@@ -748,12 +748,6 @@ img,
 body[data-cenario="sg"] .game-board {
     border-color: #ffb300;            /* borda do tabuleiro */
 }
-body[data-cenario="sg"] .obstaculo {
-    width: 150px;                     /* tamanho do obstáculo só aqui */
-}
-body[data-cenario="sg"] .lindo {
-    top: 60px;                        /* posição do lindo.gif só aqui */
-}
 
 /* ===== Cenário do Fazendeiro ===== */
 body[data-cenario="tg"] .game-board {
@@ -761,10 +755,13 @@ body[data-cenario="tg"] .game-board {
     
 }
 
-/* ===== Cenário do Link ===== */
-body[data-cenario="gus"] .obstaculo {
-    width: 180px;
-}
+body[data-cenario="sg"] .lindo  { top: 50px;  width: 200px; }
+body[data-cenario="tg"] .lindo  { top: 50px; width: 350px; }
+body[data-cenario="gus"] .lindo { top: 50px;  width: 350px; }
+
+body[data-cenario="sg"] .game-board.running .lindo  { animation-duration: 20s; }
+body[data-cenario="tg"] .game-board.running .lindo  { animation-duration: 20s; }
+body[data-cenario="gus"] .game-board.running .lindo { animation-duration: 20s; }
 
 /* ===== Grama no Fazendeiro (tg) e no Link (gus) ===== */
 body[data-cenario="tg"] .game-board::before,
@@ -774,7 +771,7 @@ body[data-cenario="gus"] .game-board::before {
     left: 0;
     right: 0;
     bottom: 0;
-    height: 70px;                      /* altura da grama */
+    height: var(--chao);
     z-index: 1;                        /* atrás do personagem (10) e do obstáculo (8) */
     pointer-events: none;
     background:
@@ -782,3 +779,106 @@ body[data-cenario="gus"] .game-board::before {
     border-top: 4px solid #2e7d1a;     /* borda de cima da grama */
 }
 
+body[data-cenario="sg"] .obstaculo {
+    width: 150px;
+    bottom: calc(-20px + var(--chao, 0px));
+}
+
+body[data-cenario="tg"] .obstaculo {
+    width: 150px;
+    bottom: calc(-30px + var(--chao, 0px));
+}
+
+body[data-cenario="gus"] .obstaculo {
+    width: 200px;
+    bottom: calc(-30px + var(--chao, 0px));
+}
+
+/* Moldura vermelha que pisca ao subir de nível */
+#flash-nivel {
+    position: fixed;
+    inset: 0;
+    z-index: 60;              /* acima da barra de status (50), abaixo dos modais (100) */
+    pointer-events: none;     /* não atrapalha os cliques */
+    opacity: 0;
+    box-shadow:
+        inset 0 0 0 8px #ff1744,
+        inset 0 0 70px 25px rgba(255, 23, 68, 0.85);
+}
+
+#flash-nivel.piscando {
+    animation: piscar-vermelho 0.3s steps(2, end) 6;
+}
+
+@keyframes piscar-vermelho {
+    0%, 100% { opacity: 0; }
+    50%      { opacity: 1; }
+}
+
+/* ---------- Parallax do fundo ---------- */
+#fundo-parallax {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 400%;               /* 4 imagens, cada uma com a largura da tela */
+    height: 100%;
+    display: flex;
+    z-index: 0;                /* atrás de tudo */
+    pointer-events: none;
+    will-change: transform;
+    animation: parallax-fundo 40s linear infinite paused;
+}
+
+/* Grama verde escuro quando o cenário fica escuro (Fazendeiro e Sonic) */
+body.modo-escuro[data-cenario="tg"] .game-board::before,
+body.modo-escuro[data-cenario="gus"] .game-board::before {
+    background: linear-gradient(180deg, #2e7d1a 0%, #1b5e20 35%, #0b3010 100%);
+    border-top-color: #0b3010;
+}
+
+.parallax-img {
+    flex: 0 0 25%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+}
+
+.parallax-img.espelhada {
+    transform: scaleX(-1);     /* espelha para a emenda não aparecer */
+}
+
+/* só anda enquanto o jogo está rodando; no game over congela */
+.game-board.running #fundo-parallax {
+    animation-play-state: running;
+}
+
+@keyframes parallax-fundo {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+
+/* Aviso flutuante de vida (-1 ❤️ / +1 ❤️) */
+.aviso-vida {
+    position: absolute;
+    z-index: 35;
+    pointer-events: none;
+    white-space: nowrap;
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(14px, 2.5vw, 26px);
+    animation: aviso-vida-sobe 1s steps(10, end) forwards;
+}
+
+.aviso-vida.perdeu-vida {
+    color: #ff1744;
+    text-shadow: 2px 2px 0 #000, 0 0 12px rgba(255, 23, 68, 0.9);
+}
+
+.aviso-vida.ganhou-vida {
+    color: #00e676;
+    text-shadow: 2px 2px 0 #000, 0 0 12px rgba(0, 230, 118, 0.9);
+}
+
+@keyframes aviso-vida-sobe {
+    0%   { opacity: 1; transform: translate(-50%, 0) scale(1.3); }
+    100% { opacity: 0; transform: translate(-50%, -70px) scale(1); }
+}

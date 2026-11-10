@@ -62,7 +62,7 @@ try {
 
         
         <main class="game-board" id="game-board">
-            <img src="assets/lindo.gif" class="lindo" id="lindo" alt="" aria-hidden="true">
+           <img class="lindo" id="lindo" alt="" aria-hidden="true">
             <img src="assets/img_ana/personagem_ana.gif" class="personagem" alt="Personagem">
             
             <img src="assets/img_ana/obt_ana.png" class="obstaculo" alt="Obstáculo">
@@ -105,7 +105,7 @@ try {
 
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary" id="btn-start">INICIAR JOGO</button>
-                  <a  class="game-title" href="site/index.html">SOBRE NÓS</a>
+                  <a class="game-title" href="site/index.html" target="_blank" rel="noopener noreferrer">SOBRE NÓS</a>
                 </div>
             </form>
 

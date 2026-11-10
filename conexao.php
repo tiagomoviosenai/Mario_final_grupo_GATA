@@ -3,7 +3,7 @@
     $port = '3306';
     $user = 'root';
     $pass = 'mysql';
-    $dbname = 'mario_final';
+    $dbname = 'mario_final_';
 
     try {
         $pdo = new PDO(

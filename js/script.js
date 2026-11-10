@@ -14,6 +14,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const hudPlayerName = document.getElementById('hud-player-name');
     const jumpTip = document.getElementById('jump-tip');
 
+    // Fundo com parallax: faixa de 4 imagens (normal / espelhada) que desliza sozinha
+    const fundoParallax = document.createElement('div');
+    fundoParallax.id = 'fundo-parallax';
+
+    for (let i = 0; i < 4; i++) {
+    const tile = document.createElement('div');
+    tile.className = 'parallax-img' + (i % 2 ? ' espelhada' : '');
+    fundoParallax.appendChild(tile);
+    }
+
+gameBoard.prepend(fundoParallax);
+
     // Modais
     const startModal = document.getElementById('start-modal');
     const startForm = document.getElementById('start-form');
@@ -43,35 +55,39 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             id: 'sg',
             nome: 'Abelha',
-            tamanho: 120,
+            tamanho: 130,
             img: 'assets/img_sg/personagem_sg.gif',
             fundo: 'assets/img_sg/fundo_sg.png',
             fundoEscuro: 'assets/img_sg/fundo_s_sg.png',
-            
-            obstaculo: 'assets/img_sg/obt_sg.png'
+            obstaculo: 'assets/img_sg/obt_sg.png',
+            lindo: 'assets/img_sg/lindo_sg.gif',
+            chao: 0
         },
         {
             id: 'tg',
             nome: 'Fazendeiro',
-            tamanho: 150,
+            tamanho: 130,
             img: 'assets/img_tg/personagem_tg.gif',
             fundo: 'assets/img_tg/fundo_tg.jpg',
-            fundoEscuro: 'assets/img_tg/fundo_s_tg.jpg',
-            obstaculo: 'assets/img_tg/obt_tg.png'
+            fundoEscuro: 'assets/img_tg/fundo_s_tg.png',
+            obstaculo: 'assets/img_tg/obt_tg.png',
+            lindo: 'assets/img_tg/lindo_tg.gif',
+            chao: 70
         },
         {
             id: 'gus',
             nome: 'Sonic',
-            tamanho: 255,
+            tamanho: 150,
             img: 'assets/img_gus/personagem_gus.gif',
-            fundo: 'assets/img_gus/fundo_gus.png',
-            fundoEscuro: 'assets/img_gus/fundo_s_gus.png',
-            obstaculo: 'assets/img_gus/obt_gus.png'
+            fundo: 'assets/img_gus/fundo_gus.jpg',
+            fundoEscuro: 'assets/img_gus/fundo_s_gus.jpg',
+            obstaculo: 'assets/img_gus/obt_gus.png',
+            lindo: 'assets/img_gus/lindo_gus.gif',
+            chao: 70
         }
     ];
 
-    // GIF que atravessa a tela da esquerda para a direita em todos os cenários
-    const LINDO_GIF = 'assets/lindo.gif';
+   
 
     // Reinicia a animação de um GIF (o parâmetro novo força o navegador a recarregar)
     function gifFresco(src) {
@@ -100,6 +116,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Vidas
     const VIDAS_INICIAIS = 3;
     const TEMPO_INVULNERAVEL = 1500;
+    const MAX_VIDAS = 4;               // ← limite de vidas ao mesmo tempo
+    const NIVEIS_POR_CORACAO = 5;     // ← a cada quantos níveis aparece a vida extra
     let lives = VIDAS_INICIAIS;
     let invulneravel = false;
     let invulneravelTimeout = null;
@@ -110,13 +128,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Velocidade e nível
     // Quanto MENOR o número, mais RÁPIDO o jogo (tempo em segundos que o obstáculo leva para cruzar a tela)
-    const VELOCIDADE_INICIAL = 2.2;     // começa um pouco mais rápido que o original (2.5)
-    const REDUCAO_POR_NIVEL = 0.08;     // quanto acelera a cada nível (pequeno = aumento gradual)
-    const VELOCIDADE_MAXIMA = 0.9;      // limite (a mais rápida possível)
+    const VELOCIDADE_INICIAL = 2.0;     // começa um pouco mais rápido que o original (2.5)
+    const REDUCAO_POR_NIVEL = 0.15;     // quanto acelera a cada nível (pequeno = aumento gradual)
+    const VELOCIDADE_MAXIMA = 0.3;      // limite (a mais rápida possível)
 
     let currentSpeed = VELOCIDADE_INICIAL;
     let currentLevel = 1;
     let levelMessageTimeout = null;
+    // Tempo do alerta de nível (mensagem + pisca vermelho + obstáculo e moedas sumidos)
+    const TEMPO_ALERTA = 2000;
+
+    let obstaculoOculto = false;
+    let moedasOcultas = false;
+    let alertaTimeout = null;
 
     // Mensagem de subida de nível
     const levelMessage = document.createElement('div');
@@ -131,13 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
         transform: 'translate(-50%, -50%) scale(0.8)',
         padding: '14px 22px',
         background: 'rgba(5, 3, 15, 0.9)',
-        color: '#00e5ff',
-        border: '3px solid #9d4dff',
+        color: '#ff2600',
+        border: '3px solid #ff4d4d',
         borderRadius: '0',
         fontSize: 'clamp(12px, 2.5vw, 22px)',
         fontWeight: '400',
         textAlign: 'center',
-        textShadow: '2px 2px 0 #4b1d9c, 0 0 12px #00e5ff',
+        textShadow: '2px 2px 0 #9c251d, 0 0 12px #ff1100',
         zIndex: '1000',
         pointerEvents: 'none',
         opacity: '0',
@@ -146,6 +170,63 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     gameBoard.appendChild(levelMessage);
+
+    // Moldura vermelha que pisca ao subir de nível
+const flashNivel = document.createElement('div');
+    flashNivel.id = 'flash-nivel';
+    document.body.appendChild(flashNivel);
+
+function piscarVermelho() {
+    flashNivel.classList.remove('piscando');
+    void flashNivel.offsetWidth;          // reinicia a animação
+    flashNivel.classList.add('piscando');
+}
+
+// Faz o obstáculo recomeçar da direita, respeitando a velocidade do nível atual
+function reiniciarObstaculo() {
+    toco.style.animation = 'none';
+    void toco.offsetWidth;
+    toco.style.animation = `obstaculo-animation ${VELOCIDADE_INICIAL}s infinite linear`;
+
+    const taxa = VELOCIDADE_INICIAL / currentSpeed;
+    const anims = toco.getAnimations ? toco.getAnimations() : [];
+
+    if (anims.length) {
+        anims[0].playbackRate = taxa;
+    } else {
+        toco.style.animationDuration = `${currentSpeed}s`;
+    }
+}
+
+function iniciarAlertaNivel() {
+    obstaculoOculto = true;
+    moedasOcultas = true;
+
+    toco.style.visibility = 'hidden';
+
+    // marca as moedas da tela para sumir (o coração de vida extra fica)
+    run.moedasLista.forEach(m => {
+        if (m.tipo !== 'coracao') {
+            m.remover = true;
+            m.elem.style.display = 'none';
+        }
+    });
+
+    clearTimeout(alertaTimeout);
+    alertaTimeout = setTimeout(terminarAlertaNivel, TEMPO_ALERTA);
+}
+
+function terminarAlertaNivel() {
+    obstaculoOculto = false;
+    moedasOcultas = false;
+
+    toco.style.visibility = '';
+    reiniciarObstaculo();        // o obstáculo volta pela direita
+    tempoUltimaMoeda = 0;        // as moedas voltam a aparecer depois de 3s
+
+    clearTimeout(alertaTimeout);
+    alertaTimeout = null;
+}
 
     // Sistema de moedas
     const run = {
@@ -184,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyCharacter() {
         document.body.dataset.cenario = selectedCharacter.id; 
+        document.documentElement.style.setProperty('--chao', (selectedCharacter.chao || 0) + 'px');
         if (fazendeiro) {
             fazendeiro.src = gifFresco(selectedCharacter.img);
             fazendeiro.style.width = selectedCharacter.tamanho + 'px';
@@ -290,6 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function criarMoeda(x, alturaDoChao) {
+        alturaDoChao += selectedCharacter.chao || 0;
         const elem = document.createElement('img');
         elem.src = 'assets/moeda.gif';
         elem.className = 'moeda';
@@ -320,7 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Coração de vida extra (aparece a cada 10 níveis)
     function gerarCoracao() {
-        const alturaDoChao = 110;
+        if (lives >= MAX_VIDAS) return;
+        const alturaDoChao = 110 + (selectedCharacter.chao || 0);
         const x = gameBoard.clientWidth;
 
         const elem = document.createElement('div');
@@ -359,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         m.coletada = true;
         m.elem.style.display = 'none';
 
-        lives += 1;
+        lives = Math.min(lives + 1, MAX_VIDAS);
         atualizarVidas();
         somVidaExtra();
         mostrarMensagem('❤️ VIDA EXTRA! ❤️');
@@ -402,6 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function atualizarMoedas() {
+    if (!moedasOcultas) {
         tempoUltimaMoeda += dt;
 
         if (tempoUltimaMoeda >= 3) {
@@ -412,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             tempoUltimaMoeda = 0;
         }
-
+    }
         const player = {
             x: fazendeiro.offsetLeft + 30,
             y: fazendeiro.offsetTop + 15,
@@ -422,6 +507,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let i = 0; i < run.moedasLista.length; i++) {
             const m = run.moedasLista[i];
+
+            if (m.remover) {
+                if (m.elem.parentNode) {
+                    m.elem.parentNode.removeChild(m.elem);
+                }
+                run.moedasLista.splice(i, 1);
+                i--;
+                continue;
+            }
 
             m.x -= (400 / currentSpeed) * dt;
             m.elem.style.left = `${m.x}px`;
@@ -612,9 +706,24 @@ document.addEventListener('DOMContentLoaded', () => {
         fazendeiro.style.opacity = '1';
     }
 
+    // Aviso flutuante em cima do personagem (ex: -1 ❤️)
+    function mostrarAvisoVida(texto, classe = 'perdeu-vida') {
+        const aviso = document.createElement('div');
+        aviso.className = `aviso-vida ${classe}`;
+        aviso.textContent = texto;
+
+        // centralizado no personagem, um pouco acima da cabeça
+        aviso.style.left = `${fazendeiro.offsetLeft + fazendeiro.offsetWidth / 2}px`;
+        aviso.style.top = `${Math.max(80, fazendeiro.offsetTop - 30)}px`;   // 80 = não esconder atrás da barra do topo
+
+        gameBoard.appendChild(aviso);
+        aviso.addEventListener('animationend', () => aviso.remove());
+    }
+
     function perderVida(tocoPosition, fazendeiroPosition) {
         lives -= 1;
         atualizarVidas();
+        mostrarAvisoVida('-1 ❤️');  
 
         coins = 0;
         if (coinsDisplay) {
@@ -643,10 +752,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function atualizarFundo() {
+   function atualizarFundo() {
         const escuro = Math.floor(currentLevel / NIVEIS_POR_FUNDO) % 2 === 1;
         const src = escuro ? selectedCharacter.fundoEscuro : selectedCharacter.fundo;
+
+        document.body.classList.toggle('modo-escuro', escuro);
+
         gameBoard.style.backgroundImage = `url('${src}')`;
+
+        fundoParallax.querySelectorAll('.parallax-img').forEach(tile => {
+        tile.style.backgroundImage = `url('${src}')`;
+        });
     }
 
     function atualizarNivel() {
@@ -658,7 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLevel = novoNivel;
 
         // A cada 10 níveis (10, 20, 30...) aparece um coração de vida extra
-        if (Math.floor(currentLevel / 10) > Math.floor(nivelAnterior / 10)) {
+        if (Math.floor(currentLevel / 5) > Math.floor(nivelAnterior / 5)) {
             gerarCoracao();
         }
 
@@ -672,6 +788,8 @@ document.addEventListener('DOMContentLoaded', () => {
         );
 
         const taxa = VELOCIDADE_INICIAL / currentSpeed;
+        const animFundo = fundoParallax.getAnimations ? fundoParallax.getAnimations() : [];
+            if (animFundo.length) animFundo[0].updatePlaybackRate(taxa);
         const anims = toco.getAnimations ? toco.getAnimations() : [];
 
         if (anims.length && anims[0].updatePlaybackRate) {
@@ -684,8 +802,10 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarMensagemNivel(currentLevel);
     }
 
-    function mostrarMensagemNivel(nivel) {
-        mostrarMensagem(`🎉 SUBIU DE NÍVEL! NÍVEL ${nivel} 🎉`);
+   function mostrarMensagemNivel(nivel) {
+    mostrarMensagem(`SUBIU DE NÍVEL ${nivel} ! DIFICULDADE AUMENTADA`);
+    piscarVermelho();                      // ← nova linha
+    iniciarAlertaNivel();
     }
 
     function mostrarMensagem(texto) {
@@ -699,7 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         levelMessageTimeout = setTimeout(() => {
             esconderMensagemNivel();
-        }, 1800);
+        }, 2000);
     }
 
     function esconderMensagemNivel() {
@@ -765,6 +885,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSpeed = VELOCIDADE_INICIAL;
         currentLevel = 1;
 
+        const animFundoReset = fundoParallax.getAnimations ? fundoParallax.getAnimations() : [];
+        if (animFundoReset.length) animFundoReset[0].updatePlaybackRate(1);
+
         lives = VIDAS_INICIAIS;
         pararPiscar();
         atualizarVidas();
@@ -777,16 +900,23 @@ document.addEventListener('DOMContentLoaded', () => {
         toco.style.left = '';
 
         limpaMoedas();
+        terminarAlertaNivel();
 
-        // Recarrega o lindo.gif para a animação recomeçar do zero
-        if (lindo) {
-            lindo.src = gifFresco(LINDO_GIF);
+       // Carrega o GIF do cenário escolhido e reinicia a animação do zero
+    if (lindo) {
+        if (selectedCharacter.lindo) {
+            lindo.src = gifFresco(selectedCharacter.lindo);
+            lindo.style.display = '';
+        } else {
+            lindo.removeAttribute('src');
+            lindo.style.display = 'none';
         }
+    }
 
         fazendeiro.src = gifFresco(selectedCharacter.img);
         toco.src = selectedCharacter.obstaculo;
         fazendeiro.style.animation = '';
-        fazendeiro.style.bottom = '0px';
+        fazendeiro.style.bottom = '';
         fazendeiro.classList.remove('jump', 'derrotado');
 
         if (jumpTip) {
@@ -798,6 +928,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // PULO
     // ==========================================
 
+    const NIVEL_PULO_RAPIDO = 6;     // a partir deste nível o pulo acelera
+    const FATOR_PULO_RAPIDO = 0.6;   // menor = pulo mais rápido
+
+    const NIVEL_PULO_MUITO_RAPIDO = 10;    // a partir deste nível o pulo acelera ainda mais
+    const FATOR_PULO_MUITO_RAPIDO = 0.45;  // menor = pulo mais rápido (precisa ser menor que 0.6)
+
     function jump() {
         if (!isPlaying) return;
 
@@ -806,7 +942,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Toca o som do Mario Bros
         somPulo();
 
+        // Define o fator de velocidade conforme o nível
+        let fator = 1;
+        if (currentLevel >= NIVEL_PULO_MUITO_RAPIDO) {
+            fator = FATOR_PULO_MUITO_RAPIDO;
+        } else if (currentLevel >= NIVEL_PULO_RAPIDO) {
+            fator = FATOR_PULO_RAPIDO;
+        }
+
+        fazendeiro.style.animationDuration = '';
         fazendeiro.classList.add('jump');
+
+        if (fator !== 1) {
+            const duracaoBase = parseFloat(getComputedStyle(fazendeiro).animationDuration) || 0;
+            if (duracaoBase > 0) {
+                fazendeiro.style.animationDuration = (duracaoBase * fator) + 's';
+            }
+        }
 
         if (jumpTip) {
             jumpTip.style.opacity = '0';
@@ -816,7 +968,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fazendeiro.classList.remove('jump');
         }, { once: true });
     }
-
     // ==========================================
     // COLISÕES
     // ==========================================
@@ -836,7 +987,7 @@ document.addEventListener('DOMContentLoaded', () => {
             chickenRect.bottom - margemVertical > foxRect.top + margemVertical &&
             chickenRect.top + margemVertical < foxRect.bottom - margemVertical;
 
-        if (colidiu && !invulneravel) {
+        if (colidiu && !invulneravel && !obstaculoOculto) {
             const bottomAtual = parseFloat(getComputedStyle(fazendeiro).bottom) || 0;
             perderVida(toco.offsetLeft, bottomAtual);
 
